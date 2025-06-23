@@ -49,12 +49,10 @@ Item {
         }
     }
     
-    readonly property bool hasExpandedControls: isLight && controlType === "light" && showExpandedControls && (supportsRgb || supportsCct || supportsBrightness)
+    readonly property bool hasAdvancedControls: isLight && controlType === "light" && (supportsRgb || supportsCct || supportsBrightness)
     
-    width: hasExpandedControls ? Math.max(buttonSizePixels * 4, Kirigami.Units.gridUnit * 8) : 
-           buttonSizePixels + (showLabel ? Kirigami.Units.smallSpacing : 0)
-    height: hasExpandedControls ? buttonSizePixels + Kirigami.Units.gridUnit * 10 + (showLabel ? Kirigami.Units.gridUnit : 0) :
-            buttonSizePixels + (showLabel ? Kirigami.Units.gridUnit : 0)
+    width: buttonSizePixels + (showLabel ? Kirigami.Units.smallSpacing : 0)
+    height: buttonSizePixels + (showLabel ? Kirigami.Units.gridUnit : 0)
     
     ColumnLayout {
         anchors.fill: parent
@@ -85,16 +83,14 @@ Item {
                 
                 // Advanced controls indicator for lights
                 Rectangle {
-                    visible: isLight && controlType === "light" && (supportsRgb || supportsCct || supportsBrightness)
+                    visible: hasAdvancedControls
                     anchors.top: parent.top
                     anchors.right: parent.right
                     anchors.margins: 2
                     width: 6
                     height: 6
                     radius: 3
-                    color: showExpandedControls ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor
-                    
-                    Behavior on color { ColorAnimation { duration: 150 } }
+                    color: Kirigami.Theme.disabledTextColor
                 }
             }
             
@@ -125,13 +121,13 @@ Item {
             
             onClicked: handleControlClick()
             
-            // Right-click to toggle expanded controls for lights
+            // Right-click to show advanced controls popup for lights
             MouseArea {
                 anchors.fill: parent
                 acceptedButtons: Qt.RightButton
                 onClicked: {
-                    if (isLight && controlType === "light" && (supportsRgb || supportsCct || supportsBrightness)) {
-                        showExpandedControls = !showExpandedControls
+                    if (hasAdvancedControls) {
+                        advancedControlsPopup.open()
                     }
                 }
             }
@@ -150,158 +146,219 @@ Item {
             
             Behavior on color { ColorAnimation { duration: 150 } }
         }
+    }
+    
+    // Advanced Controls Popup
+    QQC2.Popup {
+        id: advancedControlsPopup
+        parent: entityControl
+        modal: true
+        focus: true
+        closePolicy: QQC2.Popup.CloseOnEscape | QQC2.Popup.CloseOnPressOutside
         
-        // Expanded Light Controls
-        Rectangle {
-            visible: hasExpandedControls
-            Layout.fillWidth: true
-            Layout.preferredHeight: Kirigami.Units.gridUnit * 7
+        width: Kirigami.Units.gridUnit * 16
+        height: Kirigami.Units.gridUnit * 12
+        
+        x: (parent.width - width) / 2
+        y: parent.height + Kirigami.Units.smallSpacing
+        
+        background: Rectangle {
             color: Kirigami.Theme.backgroundColor
             border.color: Kirigami.Theme.separatorColor
             border.width: 1
             radius: Kirigami.Units.cornerRadius
             
-            ColumnLayout {
+            // Add a subtle shadow effect
+            Rectangle {
                 anchors.fill: parent
-                anchors.margins: Kirigami.Units.smallSpacing
-                spacing: Kirigami.Units.smallSpacing
+                anchors.margins: -2
+                z: -1
+                color: "transparent"
+                border.color: Qt.rgba(0, 0, 0, 0.1)
+                border.width: 1
+                radius: Kirigami.Units.cornerRadius + 1
+            }
+        }
+        contentItem: ColumnLayout {
+            spacing: Kirigami.Units.largeSpacing
+            
+            // Popup Header
+            RowLayout {
+                Layout.fillWidth: true
                 
-                // Brightness Control
-                RowLayout {
-                    visible: supportsBrightness && isOn
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: Kirigami.Units.gridUnit * 1.2
-                    
-                    Kirigami.Icon {
-                        source: "brightness-low"
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                        Layout.preferredHeight: Kirigami.Units.iconSizes.small
-                    }
-                    
-                    QQC2.Slider {
-                        id: brightnessSlider
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: Kirigami.Units.gridUnit * 1.2
-                        from: 1
-                        to: 100
-                        value: currentBrightness
-                        stepSize: 1
-                        
-                        onMoved: {
-                            // Send brightness command on slider move
-                            var brightnessValue = Math.round(value * 255 / 100)
-                            controlActivated(entityId, "turn_on", { brightness: brightnessValue })
-                        }
-                        
-                        background: Rectangle {
-                            x: brightnessSlider.leftPadding
-                            y: brightnessSlider.topPadding + brightnessSlider.availableHeight / 2 - height / 2
-                            implicitWidth: 200
-                            implicitHeight: 8
-                            width: brightnessSlider.availableWidth
-                            height: implicitHeight
-                            radius: 4
-                            color: Kirigami.Theme.backgroundColor
-                            border.color: Kirigami.Theme.separatorColor
-                            
-                            Rectangle {
-                                width: brightnessSlider.visualPosition * parent.width
-                                height: parent.height
-                                color: Kirigami.Theme.highlightColor
-                                radius: 4
-                            }
-                        }
-                        
-                        handle: Rectangle {
-                            x: brightnessSlider.leftPadding + brightnessSlider.visualPosition * (brightnessSlider.availableWidth - width)
-                            y: brightnessSlider.topPadding + brightnessSlider.availableHeight / 2 - height / 2
-                            implicitWidth: 20
-                            implicitHeight: 20
-                            radius: 10
-                            color: brightnessSlider.pressed ? Qt.darker(Kirigami.Theme.highlightColor, 1.1) : Kirigami.Theme.highlightColor
-                            border.color: Kirigami.Theme.backgroundColor
-                            border.width: 2
-                        }
-                    }
-                    
-                    PlasmaComponents3.Label {
-                        text: currentBrightness + "%"
-                        font.pointSize: Kirigami.Theme.smallFont.pointSize
-                        Layout.preferredWidth: Kirigami.Units.gridUnit * 1.5
-                    }
+                Kirigami.Icon {
+                    source: getIconName()
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                    Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                    color: isOn ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.textColor
                 }
                 
-                // Color Temperature Control
-                RowLayout {
-                    visible: supportsCct && isOn // Show alongside RGB controls
+                PlasmaComponents3.Label {
+                    text: displayName
+                    font.bold: true
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Kirigami.Units.gridUnit * 1.2
-                    
-                    Kirigami.Icon {
-                        source: "weather-clear-night"
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                        Layout.preferredHeight: Kirigami.Units.iconSizes.small
-                    }
-                    
-                    QQC2.Slider {
-                        id: colorTempSlider
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: Kirigami.Units.gridUnit * 1.2
-                        from: 153  // ~6500K (cool)
-                        to: 500    // ~2000K (warm)
-                        value: currentColorTemp
-                        stepSize: 1
-                        
-                        onMoved: {
-                            controlActivated(entityId, "turn_on", { color_temp: Math.round(value) })
-                        }
-                        
-                        background: Rectangle {
-                            x: colorTempSlider.leftPadding
-                            y: colorTempSlider.topPadding + colorTempSlider.availableHeight / 2 - height / 2
-                            implicitWidth: 200
-                            implicitHeight: 8
-                            width: colorTempSlider.availableWidth
-                            height: implicitHeight
-                            radius: 4
-                            
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop { position: 0.0; color: "#87CEEB" } // Cool blue
-                                GradientStop { position: 1.0; color: "#FFA500" } // Warm orange
-                            }
-                            
-                            border.color: Kirigami.Theme.separatorColor
-                            border.width: 1
-                        }
-                        
-                        handle: Rectangle {
-                            x: colorTempSlider.leftPadding + colorTempSlider.visualPosition * (colorTempSlider.availableWidth - width)
-                            y: colorTempSlider.topPadding + colorTempSlider.availableHeight / 2 - height / 2
-                            implicitWidth: 20
-                            implicitHeight: 20
-                            radius: 10
-                            color: colorTempSlider.pressed ? Qt.darker(Kirigami.Theme.highlightColor, 1.1) : Kirigami.Theme.highlightColor
-                            border.color: Kirigami.Theme.backgroundColor
-                            border.width: 2
-                        }
-                    }
-                    
-                    PlasmaComponents3.Label {
-                        text: Math.round(1000000 / currentColorTemp) + "K"
-                        font.pointSize: Kirigami.Theme.smallFont.pointSize
-                        Layout.preferredWidth: Kirigami.Units.gridUnit * 1.5
-                    }
                 }
                 
-                // RGB Color Control
-                RowLayout {
-                    visible: supportsRgb && isOn
+                PlasmaComponents3.Button {
+                    icon.name: "window-close"
+                    flat: true
+                    onClicked: advancedControlsPopup.close()
+                }
+            }
+            
+            // Brightness Control
+            RowLayout {
+                visible: supportsBrightness && isOn
+                Layout.fillWidth: true
+                Layout.preferredHeight: Kirigami.Units.gridUnit * 1.5
+                
+                Kirigami.Icon {
+                    source: "brightness-low"
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                    Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                }
+                
+                PlasmaComponents3.Label {
+                    text: "Brightness"
+                    Layout.preferredWidth: Kirigami.Units.gridUnit * 3
+                }
+                
+                QQC2.Slider {
+                    id: popupBrightnessSlider
                     Layout.fillWidth: true
                     Layout.preferredHeight: Kirigami.Units.gridUnit * 1.5
-                    spacing: Kirigami.Units.smallSpacing
+                    from: 1
+                    to: 100
+                    value: currentBrightness
+                    stepSize: 1
                     
-                    // Color preset buttons
+                    onMoved: {
+                        var brightnessValue = Math.round(value * 255 / 100)
+                        controlActivated(entityId, "turn_on", { brightness: brightnessValue })
+                    }
+                    
+                    background: Rectangle {
+                        x: popupBrightnessSlider.leftPadding
+                        y: popupBrightnessSlider.topPadding + popupBrightnessSlider.availableHeight / 2 - height / 2
+                        implicitWidth: 200
+                        implicitHeight: 8
+                        width: popupBrightnessSlider.availableWidth
+                        height: implicitHeight
+                        radius: 4
+                        color: Kirigami.Theme.backgroundColor
+                        border.color: Kirigami.Theme.separatorColor
+                        
+                        Rectangle {
+                            width: popupBrightnessSlider.visualPosition * parent.width
+                            height: parent.height
+                            color: Kirigami.Theme.highlightColor
+                            radius: 4
+                        }
+                    }
+                    
+                    handle: Rectangle {
+                        x: popupBrightnessSlider.leftPadding + popupBrightnessSlider.visualPosition * (popupBrightnessSlider.availableWidth - width)
+                        y: popupBrightnessSlider.topPadding + popupBrightnessSlider.availableHeight / 2 - height / 2
+                        implicitWidth: 20
+                        implicitHeight: 20
+                        radius: 10
+                        color: popupBrightnessSlider.pressed ? Qt.darker(Kirigami.Theme.highlightColor, 1.1) : Kirigami.Theme.highlightColor
+                        border.color: Kirigami.Theme.backgroundColor
+                        border.width: 2
+                    }
+                }
+                
+                PlasmaComponents3.Label {
+                    text: currentBrightness + "%"
+                    Layout.preferredWidth: Kirigami.Units.gridUnit * 1.5
+                }
+            }
+            
+            // Color Temperature Control
+            RowLayout {
+                visible: supportsCct && isOn
+                Layout.fillWidth: true
+                Layout.preferredHeight: Kirigami.Units.gridUnit * 1.5
+                
+                Kirigami.Icon {
+                    source: "weather-clear-night"
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                    Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                }
+                
+                PlasmaComponents3.Label {
+                    text: "Color Temp"
+                    Layout.preferredWidth: Kirigami.Units.gridUnit * 3
+                }
+                
+                QQC2.Slider {
+                    id: popupColorTempSlider
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Kirigami.Units.gridUnit * 1.5
+                    from: 153  // ~6500K (cool)
+                    to: 500    // ~2000K (warm)
+                    value: currentColorTemp
+                    stepSize: 1
+                    
+                    onMoved: {
+                        controlActivated(entityId, "turn_on", { color_temp: Math.round(value) })
+                    }
+                    
+                    background: Rectangle {
+                        x: popupColorTempSlider.leftPadding
+                        y: popupColorTempSlider.topPadding + popupColorTempSlider.availableHeight / 2 - height / 2
+                        implicitWidth: 200
+                        implicitHeight: 8
+                        width: popupColorTempSlider.availableWidth
+                        height: implicitHeight
+                        radius: 4
+                        
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: "#87CEEB" } // Cool blue
+                            GradientStop { position: 1.0; color: "#FFA500" } // Warm orange
+                        }
+                        
+                        border.color: Kirigami.Theme.separatorColor
+                        border.width: 1
+                    }
+                    
+                    handle: Rectangle {
+                        x: popupColorTempSlider.leftPadding + popupColorTempSlider.visualPosition * (popupColorTempSlider.availableWidth - width)
+                        y: popupColorTempSlider.topPadding + popupColorTempSlider.availableHeight / 2 - height / 2
+                        implicitWidth: 20
+                        implicitHeight: 20
+                        radius: 10
+                        color: popupColorTempSlider.pressed ? Qt.darker(Kirigami.Theme.highlightColor, 1.1) : Kirigami.Theme.highlightColor
+                        border.color: Kirigami.Theme.backgroundColor
+                        border.width: 2
+                    }
+                }
+                
+                PlasmaComponents3.Label {
+                    text: Math.round(1000000 / currentColorTemp) + "K"
+                    Layout.preferredWidth: Kirigami.Units.gridUnit * 1.5
+                }
+            }
+            
+            // RGB Color Control
+            ColumnLayout {
+                visible: supportsRgb && isOn
+                Layout.fillWidth: true
+                spacing: Kirigami.Units.smallSpacing
+                
+                PlasmaComponents3.Label {
+                    text: "RGB Colors"
+                    font.bold: true
+                }
+                
+                // Color preset buttons
+                GridLayout {
+                    Layout.fillWidth: true
+                    columns: 7
+                    columnSpacing: Kirigami.Units.smallSpacing
+                    rowSpacing: Kirigami.Units.smallSpacing
+                    
                     Repeater {
                         model: [
                             { color: "#FF0000", name: "Red" },
@@ -314,15 +371,15 @@ Item {
                         ]
                         
                         PlasmaComponents3.Button {
-                            Layout.preferredWidth: Kirigami.Units.gridUnit * 1.2
-                            Layout.preferredHeight: Kirigami.Units.gridUnit * 1.2
+                            Layout.preferredWidth: Kirigami.Units.gridUnit * 1.5
+                            Layout.preferredHeight: Kirigami.Units.gridUnit * 1.5
                             
                             background: Rectangle {
                                 radius: Kirigami.Units.cornerRadius
                                 color: modelData.color
                                 border.color: Qt.rgba(currentRgbColor[0]/255, currentRgbColor[1]/255, currentRgbColor[2]/255, 1.0) === color ? 
                                              Kirigami.Theme.highlightColor : Kirigami.Theme.separatorColor
-                                border.width: Qt.rgba(currentRgbColor[0]/255, currentRgbColor[1]/255, currentRgbColor[2]/255, 1.0) === color ? 2 : 1
+                                border.width: Qt.rgba(currentRgbColor[0]/255, currentRgbColor[1]/255, currentRgbColor[2]/255, 1.0) === color ? 3 : 1
                             }
                             
                             PlasmaComponents3.ToolTip {
@@ -339,9 +396,8 @@ Item {
                 
                 // Current color indicator
                 Rectangle {
-                    visible: supportsRgb && isOn
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Kirigami.Units.gridUnit * 0.8
+                    Layout.preferredHeight: Kirigami.Units.gridUnit * 1
                     radius: Kirigami.Units.cornerRadius
                     color: Qt.rgba(currentRgbColor[0]/255, currentRgbColor[1]/255, currentRgbColor[2]/255, 1.0)
                     border.color: Kirigami.Theme.separatorColor
@@ -349,7 +405,7 @@ Item {
                     
                     PlasmaComponents3.Label {
                         anchors.centerIn: parent
-                        text: "RGB: " + currentRgbColor[0] + ", " + currentRgbColor[1] + ", " + currentRgbColor[2]
+                        text: "Current: RGB(" + currentRgbColor[0] + ", " + currentRgbColor[1] + ", " + currentRgbColor[2] + ")"
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
                         color: (currentRgbColor[0] + currentRgbColor[1] + currentRgbColor[2]) > 384 ? "black" : "white"
                     }

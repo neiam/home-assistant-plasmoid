@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+                          http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name=""/>
+
+  <group name="General">
+    <entry name="homeAssistantUrl" type="String">
+      <label>Home Assistant URL</label>
+      <default>http://homeassistant.local:8123</default>
+    </entry>
+    
+    <entry name="accessToken" type="String">
+      <label>Access Token</label>
+      <default></default>
+    </entry>
+    
+    <entry name="updateInterval" type="Int">
+      <label>Update Interval (seconds)</label>
+      <default>30</default>
+    </entry>
+  </group>
+
+  <group name="Entities">
+    <entry name="selectedEntities" type="StringList">
+      <label>Selected Entities</label>
+      <default></default>
+    </entry>
+  </group>
+</kcfg>

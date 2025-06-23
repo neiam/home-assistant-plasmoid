@@ -1,0 +1,21 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "gmp@gmp.io",
+                "Name": "Gabe"
+            }
+        ],
+        "Category": "System Information",
+        "Description": "Control Home Assistant entities from your desktop",
+        "Icon": "home",
+        "Id": "org.neiam.kde.homeassistant",
+        "Name": "Home Assistant Control",
+        "Version": "2.0",
+        "Website": "http://neiam.org"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API": "declarativeappletscript",
+    "X-Plasma-MainScript": "ui/main.qml",
+    "X-KDE-PlasmaDesktopFile": "Plasma/Applet"
+}

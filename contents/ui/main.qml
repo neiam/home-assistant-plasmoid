@@ -28,6 +28,7 @@ PlasmoidItem {
     property string buttonSize: plasmoid.configuration.buttonSize
     
     property var configuredEntities: []
+    property var entityStates: ({}) // Store entity states here
     property bool hasValidConfig: homeAssistantUrl && accessToken
     property bool hasEntities: configuredEntities.length > 0
     
@@ -62,14 +63,13 @@ PlasmoidItem {
         accessToken: root.accessToken
         
         onStateChanged: function(entityId, state) {
-            // Update the entity state in the grid
-            for (var i = 0; i < entityGrid.children.length; i++) {
-                var control = entityGrid.children[i]
-                if (control.entityId === entityId) {
-                    control.entityState = state
-                    break
-                }
-            }
+            // Store the state in our central state store
+            var newStates = root.entityStates
+            newStates[entityId] = state
+            root.entityStates = newStates
+            
+            // Trigger a change notification
+            root.entityStatesChanged()
         }
         
         onError: function(message) {
@@ -165,6 +165,7 @@ PlasmoidItem {
                         iconName: modelData.icon || "home-assistant"
                         showLabel: root.showEntityLabels
                         buttonSize: root.buttonSize
+                        entityState: root.entityStates[entityId] || null
                         
                         onControlActivated: function(entityId, action, data) {
                             switch (action) {
@@ -185,9 +186,27 @@ PlasmoidItem {
                             })
                         }
                         
+                        onStateRequested: function(entityId) {
+                            if (root.hasValidConfig) {
+                                isLoadingState = true
+                                homeAssistantAPI.getState(entityId, function(success, state) {
+                                    isLoadingState = false
+                                    if (!success) {
+                                        console.log("Failed to refresh state for:", entityId)
+                                    }
+                                })
+                            }
+                        }
+                        
                         Component.onCompleted: {
                             if (root.hasValidConfig) {
-                                homeAssistantAPI.getState(entityId)
+                                isLoadingState = true
+                                homeAssistantAPI.getState(entityId, function(success, state) {
+                                    isLoadingState = false
+                                    if (!success) {
+                                        console.log("Failed to get initial state for:", entityId)
+                                    }
+                                })
                             }
                         }
                     }

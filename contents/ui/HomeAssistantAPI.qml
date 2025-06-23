@@ -59,6 +59,7 @@ QtObject {
     function getState(entityId, callback) {
         if (!baseUrl || !accessToken) {
             error("Home Assistant URL and access token must be configured")
+            if (callback) callback(false, null)
             return
         }
         
@@ -77,16 +78,39 @@ QtObject {
                         stateChanged(entityId, state)
                         if (callback) callback(true, state)
                     } catch (e) {
-                        console.log("Error parsing state response:", e)
+                        console.log("Error parsing state response for", entityId, ":", e)
+                        error("Failed to parse state response for " + entityId)
                         if (callback) callback(false, null)
                     }
+                } else if (xhr.status === 404) {
+                    console.log("Entity not found:", entityId)
+                    error("Entity not found: " + entityId)
+                    if (callback) callback(false, null)
+                } else if (xhr.status === 401) {
+                    console.log("Authentication failed - check access token")
+                    error("Authentication failed - check access token")
+                    if (callback) callback(false, null)
                 } else {
-                    console.log("Failed to get state for", entityId, ":", xhr.status)
+                    console.log("Failed to get state for", entityId, ":", xhr.status, xhr.responseText)
+                    error("Failed to get state for " + entityId + ": " + xhr.status)
                     if (callback) callback(false, null)
                 }
             }
         }
         
+        xhr.onerror = function() {
+            console.log("Network error getting state for", entityId)
+            error("Network error getting state for " + entityId)
+            if (callback) callback(false, null)
+        }
+        
+        xhr.ontimeout = function() {
+            console.log("Timeout getting state for", entityId)
+            error("Timeout getting state for " + entityId)
+            if (callback) callback(false, null)
+        }
+        
+        xhr.timeout = 10000 // 10 second timeout
         xhr.send()
     }
     
@@ -249,5 +273,22 @@ QtObject {
     function turnOff(entityId) {
         var domain = entityId.split('.')[0]
         callService(domain, 'turn_off', entityId)
+    }
+    
+    // Enhanced light control functions
+    function setLightBrightness(entityId, brightness) {
+        callService('light', 'turn_on', entityId, { brightness: brightness })
+    }
+    
+    function setLightColor(entityId, rgbColor) {
+        callService('light', 'turn_on', entityId, { rgb_color: rgbColor })
+    }
+    
+    function setLightColorTemp(entityId, colorTemp) {
+        callService('light', 'turn_on', entityId, { color_temp: colorTemp })
+    }
+    
+    function setLightAdvanced(entityId, serviceData) {
+        callService('light', 'turn_on', entityId, serviceData)
     }
 }

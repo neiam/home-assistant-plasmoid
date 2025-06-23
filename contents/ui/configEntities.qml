@@ -90,6 +90,7 @@ KCM.SimpleKCM {
         entityBrowser.editText = ""
         entityBrowser.selectedEntityId = ""
         entityBrowser.selectedEntityName = ""
+        entityBrowser.selectedEntity = null
         newEntityIdField.text = ""
         newEntityNameField.text = ""
         newEntityIconField.text = ""
@@ -234,6 +235,8 @@ KCM.SimpleKCM {
                     Layout.fillWidth: true
                     
                     onEntitySelected: function(entity) {
+                        // Fill the entity ID field
+                        newEntityIdField.text = entity.entity_id
                         newEntityNameField.text = entity.friendly_name
                         newEntityIconField.text = entity.icon ? entity.icon.replace("mdi:", "") : ""
                         
@@ -277,8 +280,11 @@ KCM.SimpleKCM {
                     
                     onTextChanged: {
                         if (text.trim()) {
+                            // Clear entity browser selection when manually typing
                             entityBrowser.editText = ""
                             entityBrowser.selectedEntityId = text.trim()
+                            entityBrowser.selectedEntityName = ""
+                            entityBrowser.selectedEntity = null
                         }
                     }
                 }

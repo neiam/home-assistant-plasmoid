@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls as QQC2
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.components as PlasmaComponents3
@@ -21,33 +22,177 @@ PlasmoidItem {
     property string homeAssistantUrl: plasmoid.configuration.homeAssistantUrl
     property string accessToken: plasmoid.configuration.accessToken
     property int updateInterval: plasmoid.configuration.updateInterval
+    property string configuredEntitiesJson: plasmoid.configuration.configuredEntities
+    property int maxEntitiesPerRow: plasmoid.configuration.maxEntitiesPerRow
+    property bool showEntityLabels: plasmoid.configuration.showEntityLabels
+    property string buttonSize: plasmoid.configuration.buttonSize
+    
+    property var configuredEntities: []
+    property bool hasValidConfig: homeAssistantUrl && accessToken
+    property bool hasEntities: configuredEntities.length > 0
+    
+    // Parse configured entities from JSON
+    function parseConfiguredEntities() {
+        try {
+            var parsed = JSON.parse(configuredEntitiesJson || "[]")
+            configuredEntities = parsed
+        } catch (e) {
+            console.log("Error parsing configured entities:", e)
+            configuredEntities = []
+        }
+    }
+    
+    // Update entity states
+    function updateEntityStates() {
+        if (!hasValidConfig || !hasEntities) return
+        
+        for (var i = 0; i < configuredEntities.length; i++) {
+            var entity = configuredEntities[i]
+            homeAssistantAPI.getState(entity.entityId)
+        }
+    }
+    
+    onConfiguredEntitiesJsonChanged: parseConfiguredEntities()
+    Component.onCompleted: parseConfiguredEntities()
+    
+    // Home Assistant API helper
+    HomeAssistantAPI {
+        id: homeAssistantAPI
+        baseUrl: root.homeAssistantUrl
+        accessToken: root.accessToken
+        
+        onStateChanged: function(entityId, state) {
+            // Update the entity state in the grid
+            for (var i = 0; i < entityGrid.children.length; i++) {
+                var control = entityGrid.children[i]
+                if (control.entityId === entityId) {
+                    control.entityState = state
+                    break
+                }
+            }
+        }
+        
+        onError: function(message) {
+            console.log("Home Assistant API Error:", message)
+        }
+    }
+    
+    // Update timer
+    Timer {
+        id: updateTimer
+        interval: root.updateInterval * 1000
+        running: root.hasValidConfig && root.hasEntities
+        repeat: true
+        onTriggered: updateEntityStates()
+    }
     
     fullRepresentation: ColumnLayout {
         anchors.fill: parent
         anchors.margins: Kirigami.Units.smallSpacing
         
+        // Title
         PlasmaComponents3.Label {
             text: i18n("Home Assistant Control")
             font.bold: true
             Layout.alignment: Qt.AlignHCenter
+            visible: !hasValidConfig || !hasEntities
         }
         
-        PlasmaComponents3.Label {
-            text: i18n("Configure the widget to connect to your Home Assistant instance")
-            wrapMode: Text.WordWrap
+        // Configuration prompt
+        ColumnLayout {
+            visible: !hasValidConfig
             Layout.fillWidth: true
-            Layout.alignment: Qt.AlignHCenter
-            horizontalAlignment: Text.AlignHCenter
-        }
-        
-        PlasmaComponents3.Button {
-            text: i18n("Configure")
-            Layout.alignment: Qt.AlignHCenter
-            onClicked: plasmoid.internalAction("configure").trigger()
-        }
-        
-        Item {
             Layout.fillHeight: true
+            spacing: Kirigami.Units.largeSpacing
+            
+            PlasmaComponents3.Label {
+                text: i18n("Configure the widget to connect to your Home Assistant instance")
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignHCenter
+                horizontalAlignment: Text.AlignHCenter
+            }
+            
+            PlasmaComponents3.Button {
+                text: i18n("Configure Connection")
+                Layout.alignment: Qt.AlignHCenter
+                onClicked: plasmoid.internalAction("configure").trigger()
+            }
+        }
+        
+        // Entity setup prompt
+        ColumnLayout {
+            visible: hasValidConfig && !hasEntities
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: Kirigami.Units.largeSpacing
+            
+            PlasmaComponents3.Label {
+                text: i18n("Configure entities to control them from the widget")
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignHCenter
+                horizontalAlignment: Text.AlignHCenter
+            }
+            
+            PlasmaComponents3.Button {
+                text: i18n("Configure Entities")
+                Layout.alignment: Qt.AlignHCenter
+                onClicked: plasmoid.internalAction("configure").trigger()
+            }
+        }
+        
+        // Entity controls grid
+        QQC2.ScrollView {
+            id: scrollView
+            visible: hasValidConfig && hasEntities
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            
+            GridLayout {
+                id: entityGrid
+                columns: root.maxEntitiesPerRow
+                columnSpacing: Kirigami.Units.smallSpacing
+                rowSpacing: Kirigami.Units.smallSpacing
+                
+                Repeater {
+                    model: root.configuredEntities
+                    
+                    EntityControl {
+                        entityId: modelData.entityId || ""
+                        displayName: modelData.displayName || modelData.entityId || ""
+                        controlType: modelData.controlType || "toggle"
+                        iconName: modelData.icon || "home-assistant"
+                        showLabel: root.showEntityLabels
+                        buttonSize: root.buttonSize
+                        
+                        onControlActivated: function(entityId, action, data) {
+                            switch (action) {
+                                case "toggle":
+                                    homeAssistantAPI.toggleEntity(entityId)
+                                    break
+                                case "turn_on":
+                                    homeAssistantAPI.turnOn(entityId, data)
+                                    break
+                                case "turn_off":
+                                    homeAssistantAPI.turnOff(entityId)
+                                    break
+                            }
+                            
+                            // Update state after a short delay
+                            Qt.callLater(function() {
+                                homeAssistantAPI.getState(entityId)
+                            })
+                        }
+                        
+                        Component.onCompleted: {
+                            if (root.hasValidConfig) {
+                                homeAssistantAPI.getState(entityId)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
     
@@ -55,15 +200,47 @@ PlasmoidItem {
         source: plasmoid.icon
         anchors.fill: parent
         
+        // Show number of configured entities as badge
+        Rectangle {
+            visible: root.hasEntities
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 2
+            width: Math.max(Kirigami.Units.gridUnit * 0.8, badgeText.implicitWidth + 4)
+            height: Kirigami.Units.gridUnit * 0.8
+            radius: height / 2
+            color: Kirigami.Theme.highlightColor
+            
+            PlasmaComponents3.Label {
+                id: badgeText
+                anchors.centerIn: parent
+                text: root.configuredEntities.length
+                color: Kirigami.Theme.highlightedTextColor
+                font.pointSize: Kirigami.Theme.smallFont.pointSize
+                font.bold: true
+            }
+        }
+        
         PlasmaCore.ToolTipArea {
             anchors.fill: parent
             mainText: i18n("Home Assistant Control")
-            subText: i18n("Click to open")
+            subText: root.hasEntities ? 
+                     i18n("%1 entities configured", root.configuredEntities.length) :
+                     i18n("Click to configure")
         }
         
         MouseArea {
             anchors.fill: parent
-            onClicked: root.expanded = !root.expanded
+            onClicked: {
+                if (root.hasValidConfig && root.hasEntities) {
+                    root.expanded = !root.expanded
+                    if (root.expanded) {
+                        updateEntityStates()
+                    }
+                } else {
+                    plasmoid.internalAction("configure").trigger()
+                }
+            }
         }
     }
 }

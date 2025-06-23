@@ -7,4 +7,9 @@ ConfigModel {
         icon: "configure"
         source: "configGeneral.qml"
     }
+    ConfigCategory {
+        name: i18n("Entities")
+        icon: "view-list-details"
+        source: "configEntities.qml"
+    }
 }

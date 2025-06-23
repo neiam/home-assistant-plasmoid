@@ -23,9 +23,24 @@
   </group>
 
   <group name="Entities">
-    <entry name="selectedEntities" type="StringList">
-      <label>Selected Entities</label>
-      <default></default>
+    <entry name="configuredEntities" type="String">
+      <label>Configured Entities (JSON)</label>
+      <default>[]</default>
+    </entry>
+    
+    <entry name="maxEntitiesPerRow" type="Int">
+      <label>Maximum entities per row</label>
+      <default>3</default>
+    </entry>
+    
+    <entry name="showEntityLabels" type="Bool">
+      <label>Show entity labels</label>
+      <default>true</default>
+    </entry>
+    
+    <entry name="buttonSize" type="String">
+      <label>Button size</label>
+      <default>medium</default>
     </entry>
   </group>
 </kcfg>

@@ -17,5 +17,6 @@
     "KPackageStructure": "Plasma/Applet",
     "X-Plasma-API": "declarativeappletscript",
     "X-Plasma-MainScript": "ui/main.qml",
-    "X-KDE-PlasmaDesktopFile": "Plasma/Applet"
+    "X-KDE-PlasmaDesktopFile": "Plasma/Applet",
+    "X-Plasma-ConfigPlugins": ""
 }

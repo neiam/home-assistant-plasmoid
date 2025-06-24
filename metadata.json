@@ -18,5 +18,6 @@
     "X-Plasma-API": "declarativeappletscript",
     "X-Plasma-MainScript": "ui/main.qml",
     "X-KDE-PlasmaDesktopFile": "Plasma/Applet",
-    "X-Plasma-ConfigPlugins": ""
+    "X-Plasma-ConfigPlugins": "",
+    "X-Plasma-API-Minimum-Version": "6.0"
 }

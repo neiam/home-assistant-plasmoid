@@ -56,7 +56,7 @@ Item {
     
     // Expanded controls layout
     ColumnLayout {
-        visible: showExpandedControls && hasAdvancedControls
+        visible: showExpandedControls
         anchors.fill: parent
         spacing: Kirigami.Units.largeSpacing
         
@@ -96,163 +96,405 @@ Item {
             }
         }
         
-        // Brightness Control
-        RowLayout {
-            visible: supportsBrightness && isOn
-            Layout.fillWidth: true
-            
-            Kirigami.Icon {
-                source: "brightness-low"
-                Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                Layout.preferredHeight: Kirigami.Units.iconSizes.small
-            }
-            
-            PlasmaComponents3.Label {
-                text: "Brightness"
-                Layout.preferredWidth: Kirigami.Units.gridUnit * 3
-            }
-            
-            QQC2.Slider {
-                id: expandedBrightnessSlider
-                Layout.fillWidth: true
-                from: 1
-                to: 100
-                value: currentBrightness
-                stepSize: 1
-                
-                onMoved: {
-                    var brightnessValue = Math.round(value * 255 / 100)
-                    controlActivated(entityId, "turn_on", { brightness: brightnessValue })
-                }
-            }
-            
-            PlasmaComponents3.Label {
-                text: currentBrightness + "%"
-                Layout.preferredWidth: Kirigami.Units.gridUnit * 1.5
-            }
-        }
-        
-        // Color Temperature Control
-        RowLayout {
-            visible: supportsCct && isOn
-            Layout.fillWidth: true
-            
-            Kirigami.Icon {
-                source: "weather-clear-night"
-                Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                Layout.preferredHeight: Kirigami.Units.iconSizes.small
-            }
-            
-            PlasmaComponents3.Label {
-                text: "Color Temp"
-                Layout.preferredWidth: Kirigami.Units.gridUnit * 3
-            }
-            
-            QQC2.Slider {
-                id: expandedColorTempSlider
-                Layout.fillWidth: true
-                from: 153  // ~6500K (cool)
-                to: 500    // ~2000K (warm)
-                value: currentColorTemp
-                stepSize: 1
-                
-                onMoved: {
-                    controlActivated(entityId, "turn_on", { color_temp: Math.round(value) })
-                }
-                
-                background: Rectangle {
-                    x: expandedColorTempSlider.leftPadding
-                    y: expandedColorTempSlider.topPadding + expandedColorTempSlider.availableHeight / 2 - height / 2
-                    implicitWidth: 200
-                    implicitHeight: 8
-                    width: expandedColorTempSlider.availableWidth
-                    height: implicitHeight
-                    radius: 4
-                    
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "#87CEEB" } // Cool blue
-                        GradientStop { position: 1.0; color: "#FFA500" } // Warm orange
-                    }
-                    
-                    border.color: Kirigami.Theme.separatorColor
-                    border.width: 1
-                }
-            }
-            
-            PlasmaComponents3.Label {
-                text: Math.round(1000000 / currentColorTemp) + "K"
-                Layout.preferredWidth: Kirigami.Units.gridUnit * 1.5
-            }
-        }
-        
-        // RGB Color Control
+        // Advanced Light Controls (only for lights with advanced features)
         ColumnLayout {
-            visible: supportsRgb && isOn
+            visible: hasAdvancedControls
             Layout.fillWidth: true
             spacing: Kirigami.Units.smallSpacing
             
-            PlasmaComponents3.Label {
-                text: "RGB Colors"
-                font.bold: true
-            }
-            
-            // Color preset buttons
-            GridLayout {
+            // Brightness Control
+            RowLayout {
+                visible: supportsBrightness && isOn
                 Layout.fillWidth: true
-                columns: 7
-                columnSpacing: Kirigami.Units.smallSpacing
-                rowSpacing: Kirigami.Units.smallSpacing
                 
-                Repeater {
-                    model: [
-                        { color: "#FF0000", name: "Red" },
-                        { color: "#00FF00", name: "Green" },
-                        { color: "#0000FF", name: "Blue" },
-                        { color: "#FFFF00", name: "Yellow" },
-                        { color: "#FF00FF", name: "Magenta" },
-                        { color: "#00FFFF", name: "Cyan" },
-                        { color: "#FFFFFF", name: "White" }
-                    ]
+                Kirigami.Icon {
+                    source: "brightness-low"
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                    Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                }
+                
+                PlasmaComponents3.Label {
+                    text: "Brightness"
+                    Layout.preferredWidth: Kirigami.Units.gridUnit * 3
+                }
+                
+                QQC2.Slider {
+                    id: expandedBrightnessSlider
+                    Layout.fillWidth: true
+                    from: 1
+                    to: 100
+                    value: currentBrightness
+                    stepSize: 1
                     
-                    PlasmaComponents3.Button {
-                        Layout.preferredWidth: Kirigami.Units.gridUnit * 1.5
-                        Layout.preferredHeight: Kirigami.Units.gridUnit * 1.5
-                        
-                        background: Rectangle {
-                            radius: Kirigami.Units.cornerRadius
-                            color: modelData.color
-                            border.color: Qt.rgba(currentRgbColor[0]/255, currentRgbColor[1]/255, currentRgbColor[2]/255, 1.0) === color ? 
-                                         Kirigami.Theme.highlightColor : Kirigami.Theme.separatorColor
-                            border.width: Qt.rgba(currentRgbColor[0]/255, currentRgbColor[1]/255, currentRgbColor[2]/255, 1.0) === color ? 3 : 1
-                        }
-                        
-                        PlasmaComponents3.ToolTip {
-                            text: modelData.name
-                        }
-                        
-                        onClicked: {
-                            var rgb = hexToRgb(modelData.color)
-                            controlActivated(entityId, "turn_on", { rgb_color: [rgb.r, rgb.g, rgb.b] })
-                        }
+                    onMoved: {
+                        var brightnessValue = Math.round(value * 255 / 100)
+                        controlActivated(entityId, "turn_on", { brightness: brightnessValue })
                     }
+                }
+                
+                PlasmaComponents3.Label {
+                    text: currentBrightness + "%"
+                    Layout.preferredWidth: Kirigami.Units.gridUnit * 1.5
                 }
             }
             
-            // Current color indicator
-            Rectangle {
+            // Color Temperature Control
+            RowLayout {
+                visible: supportsCct && isOn
                 Layout.fillWidth: true
-                Layout.preferredHeight: Kirigami.Units.gridUnit * 1
-                radius: Kirigami.Units.cornerRadius
-                color: Qt.rgba(currentRgbColor[0]/255, currentRgbColor[1]/255, currentRgbColor[2]/255, 1.0)
-                border.color: Kirigami.Theme.separatorColor
-                border.width: 1
+                
+                Kirigami.Icon {
+                    source: "weather-clear-night"
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                    Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                }
                 
                 PlasmaComponents3.Label {
-                    anchors.centerIn: parent
-                    text: "Current: RGB(" + currentRgbColor[0] + ", " + currentRgbColor[1] + ", " + currentRgbColor[2] + ")"
-                    font.pointSize: Kirigami.Theme.smallFont.pointSize
-                    color: (currentRgbColor[0] + currentRgbColor[1] + currentRgbColor[2]) > 384 ? "black" : "white"
+                    text: "Color Temp"
+                    Layout.preferredWidth: Kirigami.Units.gridUnit * 3
+                }
+                
+                QQC2.Slider {
+                    id: expandedColorTempSlider
+                    Layout.fillWidth: true
+                    from: 153  // ~6500K (cool)
+                    to: 500    // ~2000K (warm)
+                    value: currentColorTemp
+                    stepSize: 1
+                    
+                    onMoved: {
+                        controlActivated(entityId, "turn_on", { color_temp: Math.round(value) })
+                    }
+                    
+                    background: Rectangle {
+                        x: expandedColorTempSlider.leftPadding
+                        y: expandedColorTempSlider.topPadding + expandedColorTempSlider.availableHeight / 2 - height / 2
+                        implicitWidth: 200
+                        implicitHeight: 8
+                        width: expandedColorTempSlider.availableWidth
+                        height: implicitHeight
+                        radius: 4
+                        
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: "#87CEEB" } // Cool blue
+                            GradientStop { position: 1.0; color: "#FFA500" } // Warm orange
+                        }
+                        
+                        border.color: Kirigami.Theme.separatorColor
+                        border.width: 1
+                    }
+                }
+                
+                PlasmaComponents3.Label {
+                    text: Math.round(1000000 / currentColorTemp) + "K"
+                    Layout.preferredWidth: Kirigami.Units.gridUnit * 1.5
+                }
+            }
+            
+            // RGB Color Control
+            ColumnLayout {
+                visible: supportsRgb && isOn
+                Layout.fillWidth: true
+                spacing: Kirigami.Units.smallSpacing
+                
+                PlasmaComponents3.Label {
+                    text: "RGB Colors"
+                    font.bold: true
+                }
+                
+                // Color preset buttons
+                GridLayout {
+                    Layout.fillWidth: true
+                    columns: 7
+                    columnSpacing: Kirigami.Units.smallSpacing
+                    rowSpacing: Kirigami.Units.smallSpacing
+                    
+                    Repeater {
+                        model: [
+                            { color: "#FF0000", name: "Red" },
+                            { color: "#00FF00", name: "Green" },
+                            { color: "#0000FF", name: "Blue" },
+                            { color: "#FFFF00", name: "Yellow" },
+                            { color: "#FF00FF", name: "Magenta" },
+                            { color: "#00FFFF", name: "Cyan" },
+                            { color: "#FFFFFF", name: "White" }
+                        ]
+                        
+                        PlasmaComponents3.Button {
+                            Layout.preferredWidth: Kirigami.Units.gridUnit * 1.5
+                            Layout.preferredHeight: Kirigami.Units.gridUnit * 1.5
+                            
+                            background: Rectangle {
+                                radius: Kirigami.Units.cornerRadius
+                                color: modelData.color
+                                border.color: Qt.rgba(currentRgbColor[0]/255, currentRgbColor[1]/255, currentRgbColor[2]/255, 1.0) === color ? 
+                                             Kirigami.Theme.highlightColor : Kirigami.Theme.separatorColor
+                                border.width: Qt.rgba(currentRgbColor[0]/255, currentRgbColor[1]/255, currentRgbColor[2]/255, 1.0) === color ? 3 : 1
+                            }
+                            
+                            PlasmaComponents3.ToolTip {
+                                text: modelData.name
+                            }
+                            
+                            onClicked: {
+                                var rgb = hexToRgb(modelData.color)
+                                controlActivated(entityId, "turn_on", { rgb_color: [rgb.r, rgb.g, rgb.b] })
+                            }
+                        }
+                    }
+                }
+                
+                // Current color indicator
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Kirigami.Units.gridUnit * 1
+                    radius: Kirigami.Units.cornerRadius
+                    color: Qt.rgba(currentRgbColor[0]/255, currentRgbColor[1]/255, currentRgbColor[2]/255, 1.0)
+                    border.color: Kirigami.Theme.separatorColor
+                    border.width: 1
+                    
+                    PlasmaComponents3.Label {
+                        anchors.centerIn: parent
+                        text: "Current: RGB(" + currentRgbColor[0] + ", " + currentRgbColor[1] + ", " + currentRgbColor[2] + ")"
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        color: (currentRgbColor[0] + currentRgbColor[1] + currentRgbColor[2]) > 384 ? "black" : "white"
+                    }
+                }
+            }
+        }
+        
+        // Entity Information Section (previously shown in tooltips)
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: entityInfoColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
+            color: Kirigami.Theme.alternateBackgroundColor
+            border.color: Kirigami.Theme.separatorColor
+            border.width: 1
+            radius: Kirigami.Units.cornerRadius
+            
+            ColumnLayout {
+                id: entityInfoColumn
+                anchors.fill: parent
+                anchors.margins: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.smallSpacing
+                
+                PlasmaComponents3.Label {
+                    text: "Entity Information"
+                    font.bold: true
+                    Layout.fillWidth: true
+                }
+                
+                // Entity ID
+                RowLayout {
+                    Layout.fillWidth: true
+                    PlasmaComponents3.Label {
+                        text: "Entity ID:"
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        color: Kirigami.Theme.disabledTextColor
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 4
+                    }
+                    PlasmaComponents3.Label {
+                        text: entityId
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        Layout.fillWidth: true
+                        wrapMode: Text.WrapAnywhere
+                    }
+                }
+                
+                // Friendly Name (if different from display name)
+                RowLayout {
+                    visible: entityState && entityState.attributes && entityState.attributes.friendly_name && 
+                            entityState.attributes.friendly_name !== displayName
+                    Layout.fillWidth: true
+                    PlasmaComponents3.Label {
+                        text: "Friendly Name:"
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        color: Kirigami.Theme.disabledTextColor
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 4
+                    }
+                    PlasmaComponents3.Label {
+                        text: entityState && entityState.attributes ? (entityState.attributes.friendly_name || "") : ""
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+                }
+                
+                // Current State
+                RowLayout {
+                    Layout.fillWidth: true
+                    PlasmaComponents3.Label {
+                        text: "State:"
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        color: Kirigami.Theme.disabledTextColor
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 4
+                    }
+                    PlasmaComponents3.Label {
+                        text: entityState ? (entityState.state || "unknown") : "Unavailable"
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        Layout.fillWidth: true
+                        color: isOn ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.textColor
+                    }
+                }
+                
+                // Brightness (for lights)
+                RowLayout {
+                    visible: entityState && entityState.attributes && entityState.attributes.brightness !== undefined
+                    Layout.fillWidth: true
+                    PlasmaComponents3.Label {
+                        text: "Brightness:"
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        color: Kirigami.Theme.disabledTextColor
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 4
+                    }
+                    PlasmaComponents3.Label {
+                        text: entityState && entityState.attributes && entityState.attributes.brightness ? 
+                             (Math.round(entityState.attributes.brightness / 255 * 100) + "%") : ""
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        Layout.fillWidth: true
+                    }
+                }
+                
+                // RGB Color (for lights)
+                RowLayout {
+                    visible: entityState && entityState.attributes && entityState.attributes.rgb_color
+                    Layout.fillWidth: true
+                    PlasmaComponents3.Label {
+                        text: "RGB Color:"
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        color: Kirigami.Theme.disabledTextColor
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 4
+                    }
+                    PlasmaComponents3.Label {
+                        text: entityState && entityState.attributes && entityState.attributes.rgb_color ? 
+                             entityState.attributes.rgb_color.join(", ") : ""
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        Layout.fillWidth: true
+                    }
+                }
+                
+                // Color Temperature (for lights)
+                RowLayout {
+                    visible: entityState && entityState.attributes && entityState.attributes.color_temp
+                    Layout.fillWidth: true
+                    PlasmaComponents3.Label {
+                        text: "Color Temp:"
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        color: Kirigami.Theme.disabledTextColor
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 4
+                    }
+                    PlasmaComponents3.Label {
+                        text: entityState && entityState.attributes && entityState.attributes.color_temp ? 
+                             (Math.round(1000000 / entityState.attributes.color_temp) + "K") : ""
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        Layout.fillWidth: true
+                    }
+                }
+                
+                // Supported Color Modes (for lights)
+                RowLayout {
+                    visible: entityState && entityState.attributes && entityState.attributes.supported_color_modes && isLight
+                    Layout.fillWidth: true
+                    PlasmaComponents3.Label {
+                        text: "Supported:"
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        color: Kirigami.Theme.disabledTextColor
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 4
+                    }
+                    PlasmaComponents3.Label {
+                        text: entityState && entityState.attributes && entityState.attributes.supported_color_modes ? 
+                             entityState.attributes.supported_color_modes.join(", ") : ""
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+                }
+                
+                // Temperature (for climate/weather entities)
+                RowLayout {
+                    visible: entityState && entityState.attributes && entityState.attributes.temperature !== undefined
+                    Layout.fillWidth: true
+                    PlasmaComponents3.Label {
+                        text: "Temperature:"
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        color: Kirigami.Theme.disabledTextColor
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 4
+                    }
+                    PlasmaComponents3.Label {
+                        text: entityState && entityState.attributes && entityState.attributes.temperature !== undefined ? 
+                             (entityState.attributes.temperature + "°") : ""
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        Layout.fillWidth: true
+                    }
+                }
+                
+                // Humidity (for climate/weather entities)
+                RowLayout {
+                    visible: entityState && entityState.attributes && entityState.attributes.humidity !== undefined
+                    Layout.fillWidth: true
+                    PlasmaComponents3.Label {
+                        text: "Humidity:"
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        color: Kirigami.Theme.disabledTextColor
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 4
+                    }
+                    PlasmaComponents3.Label {
+                        text: entityState && entityState.attributes && entityState.attributes.humidity !== undefined ? 
+                             (entityState.attributes.humidity + "%") : ""
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        Layout.fillWidth: true
+                    }
+                }
+                
+                // Battery Level (for battery-powered devices)
+                RowLayout {
+                    visible: entityState && entityState.attributes && entityState.attributes.battery_level !== undefined
+                    Layout.fillWidth: true
+                    PlasmaComponents3.Label {
+                        text: "Battery:"
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        color: Kirigami.Theme.disabledTextColor
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 4
+                    }
+                    PlasmaComponents3.Label {
+                        text: entityState && entityState.attributes && entityState.attributes.battery_level !== undefined ? 
+                             (entityState.attributes.battery_level + "%") : ""
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        Layout.fillWidth: true
+                        color: {
+                            if (entityState && entityState.attributes && entityState.attributes.battery_level !== undefined) {
+                                var batteryLevel = entityState.attributes.battery_level
+                                if (batteryLevel < 20) return Kirigami.Theme.negativeTextColor
+                                if (batteryLevel < 50) return Kirigami.Theme.neutralTextColor
+                                return Kirigami.Theme.positiveTextColor
+                            }
+                            return Kirigami.Theme.textColor
+                        }
+                    }
+                }
+                
+                // Last Updated
+                RowLayout {
+                    visible: entityState && entityState.last_updated
+                    Layout.fillWidth: true
+                    PlasmaComponents3.Label {
+                        text: "Last Updated:"
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        color: Kirigami.Theme.disabledTextColor
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 4
+                    }
+                    PlasmaComponents3.Label {
+                        text: {
+                            if (entityState && entityState.last_updated) {
+                                var lastUpdated = new Date(entityState.last_updated)
+                                return lastUpdated.toLocaleTimeString()
+                            }
+                            return ""
+                        }
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        Layout.fillWidth: true
+                    }
                 }
             }
         }
@@ -395,39 +637,27 @@ Item {
         
         tooltip += "\nState: " + stateText
         
-        // Add additional info for specific entity types
+        // Only show basic info in tooltip, since full details are in expanded view
         if (entityState.attributes) {
-            if (entityState.attributes.brightness) {
+            // Show only the most relevant single piece of info
+            if (entityState.attributes.brightness && isOn) {
                 tooltip += "\nBrightness: " + Math.round(entityState.attributes.brightness / 255 * 100) + "%"
-            }
-            if (entityState.attributes.rgb_color) {
-                tooltip += "\nRGB: " + entityState.attributes.rgb_color.join(", ")
-            }
-            if (entityState.attributes.color_temp) {
-                tooltip += "\nColor Temp: " + Math.round(1000000 / entityState.attributes.color_temp) + "K"
-            }
-            if (entityState.attributes.supported_color_modes && isLight) {
-                tooltip += "\nSupported: " + entityState.attributes.supported_color_modes.join(", ")
-            }
-            if (entityState.attributes.temperature) {
+            } else if (entityState.attributes.temperature !== undefined) {
                 tooltip += "\nTemperature: " + entityState.attributes.temperature + "°"
-            }
-            if (entityState.attributes.humidity) {
-                tooltip += "\nHumidity: " + entityState.attributes.humidity + "%"
-            }
-            if (entityState.attributes.battery_level) {
+            } else if (entityState.attributes.battery_level !== undefined) {
                 tooltip += "\nBattery: " + entityState.attributes.battery_level + "%"
-            }
-            // Add last updated time
-            if (entityState.last_updated) {
-                var lastUpdated = new Date(entityState.last_updated)
-                tooltip += "\nLast updated: " + lastUpdated.toLocaleTimeString()
             }
         }
         
-        // Add instruction for light controls - only show if not in expanded mode
-        if (isLight && controlType === "light" && (supportsRgb || supportsCct || supportsBrightness) && !showExpandedControls) {
-            tooltip += "\n\nAdvanced controls available in expanded view"
+        // Add instruction for expanded view
+        if (showExpandedControls) {
+            tooltip += "\n\nDetailed information shown below"
+        } else {
+            if (isLight && controlType === "light" && (supportsRgb || supportsCct || supportsBrightness)) {
+                tooltip += "\n\nRight-click for advanced controls & details"
+            } else {
+                tooltip += "\n\nRight-click for detailed information"
+            }
         }
         
         return tooltip

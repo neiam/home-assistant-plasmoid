@@ -330,33 +330,23 @@ PlasmoidItem {
         
         tooltip += "\nState: " + stateText
         
-        // Add additional info for specific entity types
+        // Only show basic info in tooltip, since full details are in expanded view
         if (entityState.attributes) {
-            if (entityState.attributes.brightness) {
+            // Show only the most relevant single piece of info
+            if (entityState.attributes.brightness && (entityState.state === "on")) {
                 tooltip += "\nBrightness: " + Math.round(entityState.attributes.brightness / 255 * 100) + "%"
-            }
-            if (entityState.attributes.rgb_color) {
-                tooltip += "\nRGB: " + entityState.attributes.rgb_color.join(", ")
-            }
-            if (entityState.attributes.color_temp) {
-                tooltip += "\nColor Temp: " + Math.round(1000000 / entityState.attributes.color_temp) + "K"
-            }
-            if (entityState.attributes.temperature) {
+            } else if (entityState.attributes.temperature !== undefined) {
                 tooltip += "\nTemperature: " + entityState.attributes.temperature + "°"
-            }
-            if (entityState.attributes.humidity) {
-                tooltip += "\nHumidity: " + entityState.attributes.humidity + "%"
-            }
-            if (entityState.attributes.battery_level) {
+            } else if (entityState.attributes.battery_level !== undefined) {
                 tooltip += "\nBattery: " + entityState.attributes.battery_level + "%"
             }
         }
         
-        // Add instruction for advanced controls
+        // Add instruction for expanded view
         if (hasAdvancedControls) {
-            tooltip += "\n\nRight-click for advanced controls"
+            tooltip += "\n\nRight-click for advanced controls & details"
         } else {
-            tooltip += "\n\nRight-click for details"
+            tooltip += "\n\nRight-click for detailed information"
         }
         
         return tooltip
@@ -507,20 +497,15 @@ PlasmoidItem {
                         handlePanelEntityClick(entityId, controlType, isOn)
                     }
                     
-                    // Right-click to show advanced controls popup for lights or expanded view
+                    // Right-click to show expanded view with entity details
                     MouseArea {
                         anchors.fill: parent
                         acceptedButtons: Qt.RightButton
                         onClicked: {
-                            if (hasAdvancedControls) {
-                                // Store the current entity for the popup
-                                root.expandedEntityId = entityId
-                                root.expandedEntityData = modelData
-                                root.expanded = true
-                            } else {
-                                // For non-light entities, show expanded view
-                                root.expanded = !root.expanded
-                            }
+                            // Store the current entity for the popup
+                            root.expandedEntityId = entityId
+                            root.expandedEntityData = modelData
+                            root.expanded = true
                         }
                     }
                     

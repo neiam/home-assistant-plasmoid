@@ -58,7 +58,8 @@ Item {
     ColumnLayout {
         visible: showExpandedControls
         anchors.fill: parent
-        spacing: Kirigami.Units.largeSpacing
+        anchors.margins: Kirigami.Units.largeSpacing
+        spacing: Kirigami.Units.largeSpacing * 1.5
         
         // Header with entity info
         RowLayout {
@@ -100,7 +101,7 @@ Item {
         ColumnLayout {
             visible: hasAdvancedControls
             Layout.fillWidth: true
-            spacing: Kirigami.Units.smallSpacing
+            spacing: Kirigami.Units.largeSpacing
             
             // Brightness Control
             RowLayout {
@@ -196,7 +197,7 @@ Item {
             ColumnLayout {
                 visible: supportsRgb && isOn
                 Layout.fillWidth: true
-                spacing: Kirigami.Units.smallSpacing
+                spacing: Kirigami.Units.largeSpacing
                 
                 PlasmaComponents3.Label {
                     text: "RGB Colors"
@@ -207,8 +208,8 @@ Item {
                 GridLayout {
                     Layout.fillWidth: true
                     columns: 7
-                    columnSpacing: Kirigami.Units.smallSpacing
-                    rowSpacing: Kirigami.Units.smallSpacing
+                    columnSpacing: Kirigami.Units.largeSpacing
+                    rowSpacing: Kirigami.Units.largeSpacing
                     
                     Repeater {
                         model: [
@@ -276,8 +277,8 @@ Item {
             ColumnLayout {
                 id: entityInfoColumn
                 anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
-                spacing: Kirigami.Units.smallSpacing
+                anchors.margins: Kirigami.Units.largeSpacing * 1.5
+                spacing: Kirigami.Units.largeSpacing
                 
                 PlasmaComponents3.Label {
                     text: "Entity Information"
@@ -288,6 +289,7 @@ Item {
                 // Entity ID
                 RowLayout {
                     Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
                     PlasmaComponents3.Label {
                         text: "Entity ID:"
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
@@ -307,6 +309,7 @@ Item {
                     visible: entityState && entityState.attributes && entityState.attributes.friendly_name && 
                             entityState.attributes.friendly_name !== displayName
                     Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
                     PlasmaComponents3.Label {
                         text: "Friendly Name:"
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
@@ -324,6 +327,7 @@ Item {
                 // Current State
                 RowLayout {
                     Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
                     PlasmaComponents3.Label {
                         text: "State:"
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
@@ -342,6 +346,7 @@ Item {
                 RowLayout {
                     visible: entityState && entityState.attributes && entityState.attributes.brightness !== undefined
                     Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
                     PlasmaComponents3.Label {
                         text: "Brightness:"
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
@@ -360,6 +365,7 @@ Item {
                 RowLayout {
                     visible: entityState && entityState.attributes && entityState.attributes.rgb_color
                     Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
                     PlasmaComponents3.Label {
                         text: "RGB Color:"
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
@@ -378,6 +384,7 @@ Item {
                 RowLayout {
                     visible: entityState && entityState.attributes && entityState.attributes.color_temp
                     Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
                     PlasmaComponents3.Label {
                         text: "Color Temp:"
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
@@ -396,6 +403,7 @@ Item {
                 RowLayout {
                     visible: entityState && entityState.attributes && entityState.attributes.supported_color_modes && isLight
                     Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
                     PlasmaComponents3.Label {
                         text: "Supported:"
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
@@ -415,6 +423,7 @@ Item {
                 RowLayout {
                     visible: entityState && entityState.attributes && entityState.attributes.temperature !== undefined
                     Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
                     PlasmaComponents3.Label {
                         text: "Temperature:"
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
@@ -433,6 +442,7 @@ Item {
                 RowLayout {
                     visible: entityState && entityState.attributes && entityState.attributes.humidity !== undefined
                     Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
                     PlasmaComponents3.Label {
                         text: "Humidity:"
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
@@ -451,6 +461,7 @@ Item {
                 RowLayout {
                     visible: entityState && entityState.attributes && entityState.attributes.battery_level !== undefined
                     Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
                     PlasmaComponents3.Label {
                         text: "Battery:"
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
@@ -478,6 +489,7 @@ Item {
                 RowLayout {
                     visible: entityState && entityState.last_updated
                     Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
                     PlasmaComponents3.Label {
                         text: "Last Updated:"
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
@@ -563,9 +575,9 @@ Item {
                 }
             }
             
-            PlasmaComponents3.ToolTip {
-                text: getTooltipText()
-            }
+            // PlasmaComponents3.ToolTip {
+            //     text: getTooltipText()
+            // }
             
             onClicked: handleControlClick()
         }
@@ -615,6 +627,7 @@ Item {
     }
     
     function getTooltipText() {
+        return ""
         var tooltip = displayName
         
         if (isLoadingState) {

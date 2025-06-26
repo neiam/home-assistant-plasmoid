@@ -19,8 +19,8 @@ PlasmoidItem {
                           Kirigami.Units.gridUnit * 3
     Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium + Kirigami.Units.smallSpacing * 2
     
-    switchWidth: Kirigami.Units.gridUnit * 10
-    switchHeight: Kirigami.Units.gridUnit * 8
+    switchWidth: Kirigami.Units.gridUnit * 20
+    switchHeight: Kirigami.Units.gridUnit * 16
     
     Plasmoid.backgroundHints: PlasmaCore.Types.DefaultBackground | PlasmaCore.Types.ConfigurableBackground
     

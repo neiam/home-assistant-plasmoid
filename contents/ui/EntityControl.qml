@@ -1,6 +1,6 @@
-import QtQuick
+import QtQuick 2.15
 import QtQuick.Controls as QQC2
-import QtQuick.Layouts
+import QtQuick.Layouts 1.15
 import org.kde.plasma.components as PlasmaComponents3
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.core as PlasmaCore
@@ -28,6 +28,8 @@ Item {
                                         entityState.attributes.supported_color_modes.indexOf('rgbww') !== -1)
     readonly property bool supportsCct: entityState && entityState.attributes && entityState.attributes.supported_color_modes && 
                                        (entityState.attributes.supported_color_modes.indexOf('color_temp') !== -1)
+    readonly property bool supportsXy: entityState && entityState.attributes && entityState.attributes.supported_color_modes && 
+                                      (entityState.attributes.supported_color_modes.indexOf('xy') !== -1)
     readonly property bool supportsBrightness: entityState && entityState.attributes && entityState.attributes.supported_color_modes && 
                                               (entityState.attributes.supported_color_modes.indexOf('brightness') !== -1 || 
                                                entityState.attributes.brightness !== undefined)
@@ -37,6 +39,10 @@ Item {
                                          entityState.attributes.rgb_color : [255, 255, 255]
     readonly property int currentColorTemp: entityState && entityState.attributes && entityState.attributes.color_temp ? 
                                           entityState.attributes.color_temp : 370
+    readonly property var currentXyColor: entityState && entityState.attributes && entityState.attributes.xy_color ? 
+                                        entityState.attributes.xy_color : [0.3127, 0.3290] // D65 white point
+    readonly property real currentHue: xyToHue(currentXyColor[0], currentXyColor[1])
+    readonly property real currentSaturation: xyToSaturation(currentXyColor[0], currentXyColor[1])
     
     signal controlActivated(string entityId, string action, var data)
     signal stateRequested(string entityId)
@@ -49,7 +55,7 @@ Item {
         }
     }
     
-    readonly property bool hasAdvancedControls: isLight && controlType === "light" && (supportsRgb || supportsCct || supportsBrightness)
+    readonly property bool hasAdvancedControls: isLight && controlType === "light" && (supportsRgb || supportsCct || supportsXy || supportsBrightness)
     
     width: showExpandedControls ? parent.width : (buttonSizePixels + (showLabel ? Kirigami.Units.smallSpacing : 0))
     height: showExpandedControls ? parent.height : (buttonSizePixels + (showLabel ? Kirigami.Units.gridUnit : 0))
@@ -263,6 +269,197 @@ Item {
                     }
                 }
             }
+            
+            // XY Color Control (CIE 1931) with HUE Slider
+            ColumnLayout {
+                visible: supportsXy && isOn
+                Layout.fillWidth: true
+                spacing: Kirigami.Units.largeSpacing
+                
+                PlasmaComponents3.Label {
+                    text: "XY Color Space (CIE 1931)"
+                    font.bold: true
+                }
+                
+                // Hue Slider with color wheel visualization
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
+                    
+                    Kirigami.Icon {
+                        source: "color-picker"
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                    }
+                    
+                    PlasmaComponents3.Label {
+                        text: "Hue"
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 2
+                    }
+                    
+                    QQC2.Slider {
+                        id: hueSlider
+                        Layout.fillWidth: true
+                        from: 0
+                        to: 360
+                        value: currentHue
+                        stepSize: 1
+                        
+                        onMoved: {
+                            var xyColor = hueToXy(value, currentSaturation)
+                            controlActivated(entityId, "turn_on", { xy_color: [xyColor.x, xyColor.y] })
+                        }
+                        
+                        background: Rectangle {
+                            x: hueSlider.leftPadding
+                            y: hueSlider.topPadding + hueSlider.availableHeight / 2 - height / 2
+                            implicitWidth: 200
+                            implicitHeight: 8
+                            width: hueSlider.availableWidth
+                            height: implicitHeight
+                            radius: 4
+                            
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.000; color: "#FF0000" } // Red (0°)
+                                GradientStop { position: 0.167; color: "#FFFF00" } // Yellow (60°)
+                                GradientStop { position: 0.333; color: "#00FF00" } // Green (120°)
+                                GradientStop { position: 0.500; color: "#00FFFF" } // Cyan (180°)
+                                GradientStop { position: 0.667; color: "#0000FF" } // Blue (240°)
+                                GradientStop { position: 0.833; color: "#FF00FF" } // Magenta (300°)
+                                GradientStop { position: 1.000; color: "#FF0000" } // Red (360°)
+                            }
+                            
+                            border.color: Kirigami.Theme.separatorColor
+                            border.width: 1
+                        }
+                    }
+                    
+                    PlasmaComponents3.Label {
+                        text: Math.round(currentHue) + "°"
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 1.5
+                    }
+                }
+                
+                // Saturation Slider
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
+                    
+                    Kirigami.Icon {
+                        source: "adjusthsl"
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                    }
+                    
+                    PlasmaComponents3.Label {
+                        text: "Saturation"
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 2
+                    }
+                    
+                    QQC2.Slider {
+                        id: saturationSlider
+                        Layout.fillWidth: true
+                        from: 0
+                        to: 1
+                        value: currentSaturation
+                        stepSize: 0.01
+                        
+                        onMoved: {
+                            var xyColor = hueToXy(currentHue, value)
+                            controlActivated(entityId, "turn_on", { xy_color: [xyColor.x, xyColor.y] })
+                        }
+                        
+                        background: Rectangle {
+                            x: saturationSlider.leftPadding
+                            y: saturationSlider.topPadding + saturationSlider.availableHeight / 2 - height / 2
+                            implicitWidth: 200
+                            implicitHeight: 8
+                            width: saturationSlider.availableWidth
+                            height: implicitHeight
+                            radius: 4
+                            
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.0; color: "#FFFFFF" } // White (no saturation)
+                                GradientStop { position: 1.0; color: hueToRgbColor(currentHue) } // Full saturation at current hue
+                            }
+                            
+                            border.color: Kirigami.Theme.separatorColor
+                            border.width: 1
+                        }
+                    }
+                    
+                    PlasmaComponents3.Label {
+                        text: Math.round(currentSaturation * 100) + "%"
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 1.5
+                    }
+                }
+                
+                // Color preset buttons for common colors in XY space
+                GridLayout {
+                    Layout.fillWidth: true
+                    columns: 6
+                    columnSpacing: Kirigami.Units.largeSpacing
+                    rowSpacing: Kirigami.Units.largeSpacing
+                    
+                    Repeater {
+                        model: [
+                            { xy: [0.7006, 0.2993], name: "Red", color: "#FF0000" },
+                            { xy: [0.1724, 0.7468], name: "Green", color: "#00FF00" },
+                            { xy: [0.1357, 0.0399], name: "Blue", color: "#0000FF" },
+                            { xy: [0.4316, 0.5016], name: "Yellow", color: "#FFFF00" },
+                            { xy: [0.3127, 0.3290], name: "White", color: "#FFFFFF" },
+                            { xy: [0.1670, 0.0090], name: "Deep Blue", color: "#000080" }
+                        ]
+                        
+                        PlasmaComponents3.Button {
+                            Layout.preferredWidth: Kirigami.Units.gridUnit * 1.5
+                            Layout.preferredHeight: Kirigami.Units.gridUnit * 1.5
+                            
+                            background: Rectangle {
+                                radius: Kirigami.Units.cornerRadius
+                                color: modelData.color
+                                border.color: (Math.abs(currentXyColor[0] - modelData.xy[0]) < 0.01 && 
+                                              Math.abs(currentXyColor[1] - modelData.xy[1]) < 0.01) ? 
+                                             Kirigami.Theme.highlightColor : Kirigami.Theme.separatorColor
+                                border.width: (Math.abs(currentXyColor[0] - modelData.xy[0]) < 0.01 && 
+                                              Math.abs(currentXyColor[1] - modelData.xy[1]) < 0.01) ? 3 : 1
+                            }
+                            
+                            PlasmaComponents3.ToolTip {
+                                text: modelData.name + "\nXY: (" + modelData.xy[0].toFixed(4) + ", " + modelData.xy[1].toFixed(4) + ")"
+                            }
+                            
+                            onClicked: {
+                                controlActivated(entityId, "turn_on", { xy_color: modelData.xy })
+                            }
+                        }
+                    }
+                }
+                
+                // Current XY color indicator
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Kirigami.Units.gridUnit * 1
+                    radius: Kirigami.Units.cornerRadius
+                    color: xyToRgbColor(currentXyColor[0], currentXyColor[1])
+                    border.color: Kirigami.Theme.separatorColor
+                    border.width: 1
+                    
+                    PlasmaComponents3.Label {
+                        anchors.centerIn: parent
+                        text: "Current XY: (" + currentXyColor[0].toFixed(4) + ", " + currentXyColor[1].toFixed(4) + ")"
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        color: {
+                            // Calculate luminance to determine text color
+                            var rgb = xyToRgb(currentXyColor[0], currentXyColor[1])
+                            var luminance = (rgb.r + rgb.g + rgb.b) / 3
+                            return luminance > 128 ? "black" : "white"
+                        }
+                    }
+                }
+            }
         }
         
         // Entity Information Section (previously shown in tooltips)
@@ -375,6 +572,25 @@ Item {
                     PlasmaComponents3.Label {
                         text: entityState && entityState.attributes && entityState.attributes.rgb_color ? 
                              entityState.attributes.rgb_color.join(", ") : ""
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        Layout.fillWidth: true
+                    }
+                }
+                
+                // XY Color (for lights)
+                RowLayout {
+                    visible: entityState && entityState.attributes && entityState.attributes.xy_color
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
+                    PlasmaComponents3.Label {
+                        text: "XY Color:"
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        color: Kirigami.Theme.disabledTextColor
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 4
+                    }
+                    PlasmaComponents3.Label {
+                        text: entityState && entityState.attributes && entityState.attributes.xy_color ? 
+                             ("(" + entityState.attributes.xy_color[0].toFixed(4) + ", " + entityState.attributes.xy_color[1].toFixed(4) + ")") : ""
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
                         Layout.fillWidth: true
                     }
@@ -712,5 +928,164 @@ Item {
             g: parseInt(result[2], 16),
             b: parseInt(result[3], 16)
         } : null;
+    }
+    
+    // XY to RGB conversion using simplified sRGB primaries
+    function xyToRgb(x, y) {
+        // Calculate z coordinate
+        var z = 1.0 - x - y;
+        
+        // Convert XYZ to sRGB using sRGB transformation matrix
+        var Y = 1.0; // Assume maximum brightness for color calculation
+        var X = (Y / y) * x;
+        var Z = (Y / y) * z;
+        
+        // sRGB transformation matrix
+        var r = X * 3.2406 + Y * -1.5372 + Z * -0.4986;
+        var g = X * -0.9689 + Y * 1.8758 + Z * 0.0415;
+        var b = X * 0.0557 + Y * -0.2040 + Z * 1.0570;
+        
+        // Apply gamma correction
+        r = r > 0.0031308 ? 1.055 * Math.pow(r, 1.0 / 2.4) - 0.055 : 12.92 * r;
+        g = g > 0.0031308 ? 1.055 * Math.pow(g, 1.0 / 2.4) - 0.055 : 12.92 * g;
+        b = b > 0.0031308 ? 1.055 * Math.pow(b, 1.0 / 2.4) - 0.055 : 12.92 * b;
+        
+        // Clamp values to [0, 1] and convert to [0, 255]
+        r = Math.max(0, Math.min(1, r)) * 255;
+        g = Math.max(0, Math.min(1, g)) * 255;
+        b = Math.max(0, Math.min(1, b)) * 255;
+        
+        return {
+            r: Math.round(r),
+            g: Math.round(g),
+            b: Math.round(b)
+        };
+    }
+    
+    // XY to RGB color string
+    function xyToRgbColor(x, y) {
+        var rgb = xyToRgb(x, y);
+        return Qt.rgba(rgb.r / 255, rgb.g / 255, rgb.b / 255, 1.0);
+    }
+    
+    // Convert XY coordinates to HSV hue (0-360 degrees)
+    function xyToHue(x, y) {
+        var rgb = xyToRgb(x, y);
+        var r = rgb.r / 255;
+        var g = rgb.g / 255;
+        var b = rgb.b / 255;
+        
+        var max = Math.max(r, g, b);
+        var min = Math.min(r, g, b);
+        var delta = max - min;
+        
+        if (delta === 0) return 0;
+        
+        var hue;
+        if (max === r) {
+            hue = ((g - b) / delta) % 6;
+        } else if (max === g) {
+            hue = (b - r) / delta + 2;
+        } else {
+            hue = (r - g) / delta + 4;
+        }
+        
+        hue = hue * 60;
+        if (hue < 0) hue += 360;
+        
+        return hue;
+    }
+    
+    // Convert XY coordinates to HSV saturation (0-1)
+    function xyToSaturation(x, y) {
+        var rgb = xyToRgb(x, y);
+        var r = rgb.r / 255;
+        var g = rgb.g / 255;
+        var b = rgb.b / 255;
+        
+        var max = Math.max(r, g, b);
+        var min = Math.min(r, g, b);
+        
+        if (max === 0) return 0;
+        return (max - min) / max;
+    }
+    
+    // Convert HSV hue and saturation to XY coordinates
+    function hueToXy(hue, saturation) {
+        // Convert HSV to RGB first
+        var h = hue / 60;
+        var s = saturation;
+        var v = 1.0; // Maximum value for pure color
+        
+        var c = v * s;
+        var x = c * (1 - Math.abs((h % 2) - 1));
+        var m = v - c;
+        
+        var r, g, b;
+        if (h >= 0 && h < 1) {
+            r = c; g = x; b = 0;
+        } else if (h >= 1 && h < 2) {
+            r = x; g = c; b = 0;
+        } else if (h >= 2 && h < 3) {
+            r = 0; g = c; b = x;
+        } else if (h >= 3 && h < 4) {
+            r = 0; g = x; b = c;
+        } else if (h >= 4 && h < 5) {
+            r = x; g = 0; b = c;
+        } else {
+            r = c; g = 0; b = x;
+        }
+        
+        r += m; g += m; b += m;
+        
+        // Convert RGB to XYZ
+        // Apply inverse gamma correction
+        r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+        g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+        b = b > 0.04045 ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+        
+        // sRGB to XYZ transformation matrix
+        var X = r * 0.4124 + g * 0.3576 + b * 0.1805;
+        var Y = r * 0.2126 + g * 0.7152 + b * 0.0722;
+        var Z = r * 0.0193 + g * 0.1192 + b * 0.9505;
+        
+        // Convert XYZ to xy
+        var sum = X + Y + Z;
+        if (sum === 0) {
+            return { x: 0.3127, y: 0.3290 }; // D65 white point
+        }
+        
+        var x_coord = X / sum;
+        var y_coord = Y / sum;
+        
+        // Clamp to valid CIE 1931 color space bounds
+        x_coord = Math.max(0, Math.min(1, x_coord));
+        y_coord = Math.max(0, Math.min(1, y_coord));
+        
+        return { x: x_coord, y: y_coord };
+    }
+    
+    // Convert hue to RGB color string for gradient display
+    function hueToRgbColor(hue) {
+        var h = hue / 60;
+        var c = 1; // Full chroma
+        var x = c * (1 - Math.abs((h % 2) - 1));
+        
+        var r, g, b;
+        if (h >= 0 && h < 1) {
+            r = c; g = x; b = 0;
+        } else if (h >= 1 && h < 2) {
+            r = x; g = c; b = 0;
+        } else if (h >= 2 && h < 3) {
+            r = 0; g = c; b = x;
+        } else if (h >= 3 && h < 4) {
+            r = 0; g = x; b = c;
+        } else if (h >= 4 && h < 5) {
+            r = x; g = 0; b = c;
+        } else {
+            r = c; g = 0; b = x;
+        }
+        
+        return Qt.rgba(r, g, b, 1.0);
     }
 }

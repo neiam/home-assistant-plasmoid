@@ -220,3 +220,13 @@ This widget is open source. Feel free to contribute improvements:
 - Additional control types
 - UI/UX improvements
 - Performance optimizations
+
+---
+
+## 🚀 Automated Publishing
+
+This repository includes GitHub Actions for automated packaging and release management. See [PUBLISHING.md](PUBLISHING.md) for details on:
+- Automated KDE Store package creation
+- Release management with git tags
+- Local development and testing tools
+- Deployment workflow documentation

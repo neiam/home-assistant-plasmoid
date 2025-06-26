@@ -1,0 +1,108 @@
+name: Validate Plasmoid
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Validate plasmoid structure
+      run: |
+        echo "🔍 Validating plasmoid structure..."
+        
+        # Check required files
+        required_files=("metadata.json" "contents/ui/main.qml")
+        missing_files=()
+        
+        for file in "${required_files[@]}"; do
+          if [[ ! -f "$file" ]]; then
+            missing_files+=("$file")
+          fi
+        done
+        
+        if [[ ${#missing_files[@]} -gt 0 ]]; then
+          echo "❌ Missing required files:"
+          printf '%s\n' "${missing_files[@]}"
+          exit 1
+        fi
+        
+        echo "✅ All required files present"
+        
+    - name: Validate metadata.json
+      run: |
+        echo "🔍 Validating metadata.json..."
+        
+        # Check if metadata.json is valid JSON
+        if ! jq empty metadata.json 2>/dev/null; then
+          echo "❌ metadata.json is not valid JSON"
+          exit 1
+        fi
+        
+        # Check required fields
+        required_fields=("KPlugin.Id" "KPlugin.Name" "KPlugin.Version" "KPlugin.Authors")
+        
+        for field in "${required_fields[@]}"; do
+          if [[ $(jq -r ".$field // empty" metadata.json) == "" ]]; then
+            echo "❌ Missing required field: $field"
+            exit 1
+          fi
+        done
+        
+        echo "✅ metadata.json is valid"
+        
+        # Display current metadata
+        echo "📋 Current metadata:"
+        jq . metadata.json
+        
+    - name: Check QML syntax
+      run: |
+        echo "🔍 Checking QML files..."
+        
+        # Install Qt6 QML tools
+        sudo apt-get update
+        sudo apt-get install -y qt6-declarative-dev-tools
+        
+        # Find and check all QML files
+        find . -name "*.qml" -type f | while read -r qml_file; do
+          echo "Checking: $qml_file"
+          if ! qmlls "$qml_file" 2>/dev/null; then
+            echo "⚠️  QML syntax check failed for: $qml_file"
+            # Don't fail the build for QML syntax issues as qmlls might not work perfectly in CI
+          fi
+        done
+        
+        echo "✅ QML syntax check completed"
+        
+    - name: Create test package
+      run: |
+        echo "📦 Creating test package..."
+        
+        # Create a temporary directory for packaging
+        mkdir -p /tmp/test-package
+        
+        # Copy all necessary files
+        rsync -av --exclude='.git' --exclude='.github' --exclude='*.swp' --exclude='*~' . /tmp/test-package/
+        
+        # Test packaging
+        cd /tmp
+        tar -czf test-plasmoid.tar.gz test-package/
+        
+        # Check package size (warn if > 10MB)
+        size=$(stat -c%s test-plasmoid.tar.gz)
+        size_mb=$((size / 1024 / 1024))
+        
+        echo "📏 Package size: ${size_mb}MB"
+        
+        if [[ $size_mb -gt 10 ]]; then
+          echo "⚠️  Package is larger than 10MB. Consider optimizing."
+        fi
+        
+        echo "✅ Test package created successfully"

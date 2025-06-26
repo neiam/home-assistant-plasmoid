@@ -1,0 +1,122 @@
+name: Create Plasmoid Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 2.1)'
+        required: true
+        type: string
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          echo "tag=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Update metadata.json version
+      run: |
+        sed -i 's/"Version": "[^"]*"/"Version": "${{ steps.version.outputs.version }}"/' metadata.json
+        
+    - name: Create plasmoid package
+      run: |
+        # Create a temporary directory for packaging
+        mkdir -p /tmp/plasmoid-package
+        
+        # Copy all necessary files (excluding git and temporary files)
+        rsync -av --exclude='.git' --exclude='.github' --exclude='*.swp' --exclude='*~' . /tmp/plasmoid-package/
+        
+        # Create the plasmoid archive
+        cd /tmp
+        tar -czf home-assistant-plasmoid-${{ steps.version.outputs.version }}.tar.gz plasmoid-package/
+        
+        # Also create a zip file (alternative format)
+        zip -r home-assistant-plasmoid-${{ steps.version.outputs.version }}.zip plasmoid-package/
+        
+        # Move packages to workspace
+        mv home-assistant-plasmoid-${{ steps.version.outputs.version }}.tar.gz $GITHUB_WORKSPACE/
+        mv home-assistant-plasmoid-${{ steps.version.outputs.version }}.zip $GITHUB_WORKSPACE/
+        
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        cat > release_notes.md << 'EOF'
+        ## Home Assistant Control Plasmoid v${{ steps.version.outputs.version }}
+        
+        ### 📦 Installation
+        
+        **Automatic Installation (Recommended):**
+        1. Right-click on your desktop or panel
+        2. Select "Add Widgets..."
+        3. Click "Get New Widgets" → "Get New Widgets..."
+        4. Search for "Home Assistant Control"
+        5. Click "Install"
+        
+        **Manual Installation:**
+        1. Download the `.tar.gz` or `.zip` file from this release
+        2. Extract the archive
+        3. Run: `kpackagetool6 --type Plasma/Applet --install extracted-folder`
+        
+        ### 🔄 KDE Store Upload
+        
+        The packaged files are ready for upload to the KDE Store:
+        - `home-assistant-plasmoid-${{ steps.version.outputs.version }}.tar.gz`
+        - `home-assistant-plasmoid-${{ steps.version.outputs.version }}.zip`
+        
+        ### 📋 Changelog
+        
+        <!-- Add your changelog here -->
+        - Bug fixes and improvements
+        
+        ### 🐛 Known Issues
+        
+        <!-- Add any known issues here -->
+        
+        ---
+        
+        **Repository:** https://github.com/neiam/home-assistant-plasmoid
+        **KDE Store:** https://store.kde.org/p/XXXXXX (Update with your store URL)
+        EOF
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.tag }}
+        name: Home Assistant Control v${{ steps.version.outputs.version }}
+        body_path: release_notes.md
+        files: |
+          home-assistant-plasmoid-${{ steps.version.outputs.version }}.tar.gz
+          home-assistant-plasmoid-${{ steps.version.outputs.version }}.zip
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload to KDE Store Instructions
+      run: |
+        echo "🎉 Release created successfully!"
+        echo ""
+        echo "📤 To upload to KDE Store:"
+        echo "1. Go to https://store.kde.org"
+        echo "2. Log in with your KDE account"
+        echo "3. Navigate to your plasmoid page"
+        echo "4. Click 'Add Version'"
+        echo "5. Upload: home-assistant-plasmoid-${{ steps.version.outputs.version }}.tar.gz"
+        echo "6. Update version number to: ${{ steps.version.outputs.version }}"
+        echo "7. Add changelog and publish"

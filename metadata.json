@@ -11,7 +11,7 @@
         "Icon": "home",
         "Id": "org.neiam.kde.homeassistant",
         "Name": "Home Assistant Control",
-        "Version": "2.0",
+        "Version": "2.0.1",
         "Website": "http://neiam.org"
     },
     "KPackageStructure": "Plasma/Applet",

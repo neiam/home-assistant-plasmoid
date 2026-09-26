@@ -28,6 +28,7 @@ rsync -av \
   --exclude='package.sh' \
   --exclude='node_modules' \
   --exclude='*.log' \
+  --exclude='.env' \
   . "$PACKAGE_DIR/"
 
 # Update version in metadata.json if not "dev"

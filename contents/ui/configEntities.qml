@@ -87,10 +87,7 @@ KCM.SimpleKCM {
     }
     
     function clearAddForm() {
-        entityBrowser.editText = ""
-        entityBrowser.selectedEntityId = ""
-        entityBrowser.selectedEntityName = ""
-        entityBrowser.selectedEntity = null
+        entityBrowser.clearSelection()
         newEntityIdField.text = ""
         newEntityNameField.text = ""
         newEntityIconField.text = ""
@@ -278,14 +275,11 @@ KCM.SimpleKCM {
                     Kirigami.FormData.label: i18n("Entity ID:")
                     placeholderText: i18n("e.g., light.living_room")
                     
-                    onTextChanged: {
-                        if (text.trim()) {
-                            // Clear entity browser selection when manually typing
-                            entityBrowser.editText = ""
-                            entityBrowser.selectedEntityId = text.trim()
-                            entityBrowser.selectedEntityName = ""
-                            entityBrowser.selectedEntity = null
-                        }
+                    // textEdited only fires for user input, not when onEntitySelected fills this field
+                    onTextEdited: {
+                        // Clear entity browser selection when manually typing
+                        entityBrowser.clearSelection()
+                        entityBrowser.selectedEntityId = text.trim()
                     }
                 }
                 

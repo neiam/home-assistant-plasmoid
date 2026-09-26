@@ -52,3 +52,6 @@ wheels/
 # Local configuration files
 config.local.json
 settings.local.json
+
+# Secrets (Home Assistant token for local testing)
+.env

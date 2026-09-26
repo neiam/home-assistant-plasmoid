@@ -12,6 +12,8 @@ QQC2.ComboBox {
     property var selectedEntity: null
     property var filteredDomains: [] // Empty = all domains, or ["light", "switch"] etc.
     property string searchQuery: ""
+    // Set while editText is changed programmatically so it doesn't trigger a re-filter
+    property bool suppressFilter: false
     
     signal entitySelected(var entity)
     
@@ -25,18 +27,57 @@ QQC2.ComboBox {
     }
     
     onEditTextChanged: {
+        if (suppressFilter) {
+            return
+        }
         searchQuery = editText
-        filterEntities()
+        // Defer so the model is never rebuilt from inside a ComboBox/delegate signal handler
+        filterTimer.restart()
     }
     
     onActivated: function(index) {
         if (index >= 0 && index < entityModel.count) {
-            var entity = entityModel.get(index)
-            selectedEntityId = entity.entity_id
-            selectedEntityName = entity.friendly_name
-            selectedEntity = entity
-            entitySelected(entity)
+            selectEntity(entityModel.get(index))
         }
+    }
+    
+    Timer {
+        id: filterTimer
+        interval: 150
+        onTriggered: filterEntities()
+    }
+    
+    function setEditTextSilently(text) {
+        suppressFilter = true
+        editText = text
+        suppressFilter = false
+    }
+    
+    function clearSelection() {
+        setEditTextSilently("")
+        searchQuery = ""
+        selectedEntityId = ""
+        selectedEntityName = ""
+        selectedEntity = null
+    }
+    
+    function selectEntity(item) {
+        // Copy into a plain object: model/ListModel proxies become invalid once the model is rebuilt
+        var entity = {
+            entity_id: item.entity_id,
+            friendly_name: item.friendly_name,
+            domain: item.domain,
+            state: item.state,
+            icon: item.icon,
+            device_class: item.device_class,
+            unit_of_measurement: item.unit_of_measurement,
+            display_text: item.display_text
+        }
+        selectedEntityId = entity.entity_id
+        selectedEntityName = entity.friendly_name
+        selectedEntity = entity
+        setEditTextSilently(entity.display_text)
+        entitySelected(entity)
     }
     
     // Custom popup for better entity browsing
@@ -162,12 +203,8 @@ QQC2.ComboBox {
                         }
                         
                         onClicked: {
-                            entityBrowser.currentIndex = index
-                            selectedEntityId = model.entity_id
-                            selectedEntityName = model.friendly_name
-                            selectedEntity = model
-                            entitySelected(model)
                             entityPopup.close()
+                            selectEntity(model)
                         }
                     }
                 }
@@ -214,6 +251,16 @@ QQC2.ComboBox {
     }
     
     function filterEntities() {
+        // Rebuilding the model makes the editable ComboBox reset editText, which would
+        // wipe the user's query and re-trigger filtering; keep the text and suppress that.
+        var typedText = editText
+        suppressFilter = true
+        rebuildModel()
+        editText = typedText
+        suppressFilter = false
+    }
+    
+    function rebuildModel() {
         entityModel.clear()
         
         if (!homeAssistantAPI.allEntities || homeAssistantAPI.allEntities.length === 0) {

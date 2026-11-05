@@ -62,10 +62,14 @@ jobs:
           export HOMEPAGE="$FORGE_URL/$REPOSITORY"
 
           rm -rf dist
+          # Assigned before it's echoed: `echo "$(build.sh)"` would
+          # swallow a failed build and hand Publish an empty path.
           for suite in $SUITES; do
-            echo "deb $suite $(packaging/build.sh deb "$suite")" >> packages.txt
+            package=$(packaging/build.sh deb "$suite")
+            echo "deb $suite $package" >> packages.txt
           done
-          echo "rpm - $(packaging/build.sh rpm)" >> packages.txt
+          package=$(packaging/build.sh rpm)
+          echo "rpm - $package" >> packages.txt
           mv packages.txt dist/
           cat dist/packages.txt
 

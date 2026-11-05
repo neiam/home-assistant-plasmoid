@@ -110,21 +110,28 @@ before=$(ls -1 "$out" | sort)
 
 rel_config=${config#"$root/"}
 if command -v nfpm >/dev/null 2>&1; then
-  (cd "$root" && nfpm package -f "$rel_config" -p "$format" -t dist/) >&2
+  nfpm=nfpm
 else
+  # nfpm is one static binary; lift it out of its image rather than
+  # running the image. On the CI runner the job is itself a container
+  # talking to the host's daemon, so a bind mount of the checkout names
+  # a path the daemon can't see — but create/cp go over the API and
+  # need no shared filesystem.
   image=${NFPM_IMAGE:-docker.io/goreleaser/nfpm:v2.41.0}
-  if command -v docker >/dev/null 2>&1; then
-    run=(docker run --rm --user "$(id -u):$(id -g)" -v "$root:/w")
-  elif command -v podman >/dev/null 2>&1; then
-    # keep-id: files come out owned by the caller, not a subuid.
-    run=(podman run --rm --userns=keep-id -v "$root:/w:z")
-  else
-    echo "need nfpm, docker or podman" >&2
-    exit 1
+  nfpm=$out/.bin/nfpm-${image##*:}
+  if [ ! -x "$nfpm" ]; then
+    if command -v docker >/dev/null 2>&1; then engine=docker
+    elif command -v podman >/dev/null 2>&1; then engine=podman
+    else echo "need nfpm, docker or podman" >&2; exit 1
+    fi
+    mkdir -p "$out/.bin"
+    container=$("$engine" create "$image")
+    trap '"$engine" rm -f "$container" >/dev/null' EXIT
+    "$engine" cp "$container:/usr/bin/nfpm" "$nfpm.tmp" >&2
+    chmod +x "$nfpm.tmp" && mv "$nfpm.tmp" "$nfpm"
   fi
-  "${run[@]}" -e SOURCE_DATE_EPOCH -w /w "$image" \
-    package -f "$rel_config" -p "$format" -t dist/ >&2
 fi
+(cd "$root" && "$nfpm" package -f "$rel_config" -p "$format" -t dist/) >&2
 
 made=$(comm -13 <(echo "$before") <(ls -1 "$out" | sort) | grep "\.$format\$" || true)
 if [ "$(echo "$made" | grep -c .)" != 1 ]; then

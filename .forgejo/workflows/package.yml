@@ -1,0 +1,124 @@
+name: package
+on:
+  push:
+    branches: [master]
+
+# A newer push supersedes a run still waiting; one in progress finishes,
+# so the repository never holds a half-published commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+# The plasmoid packaged for the forge's own apt and rpm repositories —
+# the same shape as gitgud's `cli` job. This file and packaging/build.sh
+# are identical in every neiam plasmoid repo.
+#
+# Everything a plasmoid repo publishes lands in the namespace-wide
+# `_all` index too, so one apt line or one .repo file installs any of
+# them, beside `gg`:
+#
+#   curl -fsSL $FORGE/pkg/_keys/deb/neiam | sudo tee /etc/apt/keyrings/neiam.asc >/dev/null
+#   echo "deb [signed-by=/etc/apt/keyrings/neiam.asc] $FORGE/pkg/deb/neiam/_all $(lsb_release -cs) main" \
+#     | sudo tee /etc/apt/sources.list.d/neiam.list
+jobs:
+  package:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same fallback as gitgud's build.yml: CI_FORGE_URL where the
+      # forge injects it, the runner's own idea of the server otherwise.
+      - name: Resolve the forge URL
+        env:
+          CI_FORGE_URL: ${{ vars.CI_FORGE_URL }}
+        run: |
+          set -euo pipefail
+          forge_url=${CI_FORGE_URL:-${GITHUB_SERVER_URL:-}}
+
+          if [ -z "$forge_url" ]; then
+            echo "No forge URL available." >&2
+            echo "Set a CI_FORGE_URL variable on this repository or its org." >&2
+            exit 1
+          fi
+
+          echo "FORGE_URL=$forge_url" >> "$GITHUB_ENV"
+
+      # A plasmoid is QML only: one arch-independent package, built once
+      # per suite for the .deb (the +suite suffix gives each its own
+      # filename in the pool) and once for the .rpm, which has no suites.
+      # The suites match what `gg` publishes, so one `_all` line with
+      # $(lsb_release -cs) finds both.
+      - name: Build the .deb and .rpm
+        env:
+          REPOSITORY: ${{ github.repository }}
+          SUITES: trixie forky
+        run: |
+          set -euo pipefail
+          command -v jq >/dev/null || { echo "packaging/build.sh needs jq on the runner" >&2; exit 1; }
+
+          # The maintainer address is this forge's own host, as for gitgud.
+          host=${FORGE_URL#*://}
+          export MAINTAINER="GitGud CI <noreply@${host%%/*}>"
+          export HOMEPAGE="$FORGE_URL/$REPOSITORY"
+
+          rm -rf dist
+          for suite in $SUITES; do
+            echo "deb $suite $(packaging/build.sh deb "$suite")" >> packages.txt
+          done
+          echo "rpm - $(packaging/build.sh rpm)" >> packages.txt
+          mv packages.txt dist/
+          cat dist/packages.txt
+
+      # `${{ github.token }}` is minted for this job and may publish to
+      # this repository's packages and nowhere else — no secret to set up.
+      - name: Publish
+        env:
+          REPOSITORY: ${{ github.repository }}
+          TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          while read -r format suite package; do
+            echo "publishing $package"
+            case $format in
+              deb)
+                type=application/vnd.debian.binary-package
+                url="$FORGE_URL/pkg/deb/$REPOSITORY/upload?dist=$suite&component=main" ;;
+              rpm)
+                type=application/octet-stream
+                url="$FORGE_URL/pkg/rpm/$REPOSITORY/upload" ;;
+            esac
+            curl --fail-with-body -sS \
+              -u "gitgud-actions:$TOKEN" \
+              -H "Content-Type: $type" \
+              --data-binary "@$package" \
+              "$url"
+            echo
+          done < dist/packages.txt
+
+      - name: How to install it
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          name=$(jq -r '.KPlugin.Id | "plasma-applet-" + (split(".") | last)' metadata.json)
+          cat <<EOF
+          # Debian — \$(lsb_release -cs) is trixie or forky
+          curl -fsSL $FORGE_URL/pkg/_keys/deb/$OWNER | sudo tee /etc/apt/keyrings/$OWNER.asc >/dev/null
+          echo "deb [signed-by=/etc/apt/keyrings/$OWNER.asc] $FORGE_URL/pkg/deb/$OWNER/_all \$(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/$OWNER.list
+          sudo apt update && sudo apt install $name
+
+          # Fedora / openSUSE — /etc/yum.repos.d/$OWNER.repo
+          [$OWNER]
+          name=$OWNER
+          baseurl=$FORGE_URL/pkg/rpm/$OWNER/_all
+          enabled=1
+          repo_gpgcheck=1
+          # CI publishes unsigned packages; the forge signs the index.
+          gpgcheck=0
+          gpgkey=$FORGE_URL/pkg/_keys/rpm/$OWNER
+
+          sudo dnf install $name    # or: sudo zypper install $name
+
+          # A copy installed with kpackagetool6 shadows this one:
+          kpackagetool6 -t Plasma/Applet -r $(jq -r .KPlugin.Id metadata.json)
+          EOF

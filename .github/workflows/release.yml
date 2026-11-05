@@ -15,6 +15,13 @@ permissions:
   contents: write
   packages: write
 
+# A newer push supersedes this run: on a branch or PR the run in
+# progress is cancelled; on master it finishes, and only a run still
+# waiting is replaced.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
 jobs:
   create-release:
     runs-on: ubuntu-latest

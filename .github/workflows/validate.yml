@@ -73,19 +73,32 @@ jobs:
       run: |
         echo "🔍 Checking QML files..."
         
-        # Install Qt6 QML tools
+        # Install Qt6 QML tools (and rsync, for the package step below —
+        # the forge runner's image doesn't ship it)
         sudo apt-get update
-        sudo apt-get install -y qt6-declarative-dev-tools
-        
-        # Find and check all QML files
-        find . -name "*.qml" -type f | while read -r qml_file; do
+        sudo apt-get install -y qt6-declarative-dev-tools rsync
+
+        # Debian/Ubuntu install the Qt 6 tools here, not on PATH.
+        qtbin=/usr/lib/qt6/bin
+
+        # qmlformat parses without resolving imports, so it fails on a
+        # genuine syntax error and nothing else — that's the gate.
+        # qmllint goes further but can't see the Plasma/Kirigami modules
+        # on this runner, so its findings are printed, not enforced.
+        failed=0
+        while read -r qml_file; do
           echo "Checking: $qml_file"
-          if ! qmlls "$qml_file" 2>/dev/null; then
-            echo "⚠️  QML syntax check failed for: $qml_file"
-            # Don't fail the build for QML syntax issues as qmlls might not work perfectly in CI
+          if ! "$qtbin/qmlformat" "$qml_file" >/dev/null; then
+            echo "❌ QML syntax error in: $qml_file"
+            failed=1
           fi
-        done
-        
+          "$qtbin/qmllint" "$qml_file" || true
+        done < <(find . -name "*.qml" -type f -not -path './.git/*')
+
+        if [[ $failed -ne 0 ]]; then
+          exit 1
+        fi
+
         echo "✅ QML syntax check completed"
         
     - name: Create test package

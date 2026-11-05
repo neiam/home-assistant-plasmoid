@@ -82,9 +82,10 @@ jobs:
         qtbin=/usr/lib/qt6/bin
 
         # qmlformat parses without resolving imports, so it fails on a
-        # genuine syntax error and nothing else — that's the gate.
-        # qmllint goes further but can't see the Plasma/Kirigami modules
-        # on this runner, so its findings are printed, not enforced.
+        # genuine syntax error and nothing else. Not qmllint: with no QML
+        # modules on the runner — not even QtQuick — it flags every Item
+        # and Rectangle as unresolved, and the 10k lines of that bury the
+        # log past the forge's cap. Run it locally, where Plasma is.
         failed=0
         while read -r qml_file; do
           echo "Checking: $qml_file"
@@ -92,7 +93,6 @@ jobs:
             echo "❌ QML syntax error in: $qml_file"
             failed=1
           fi
-          "$qtbin/qmllint" "$qml_file" || true
         done < <(find . -name "*.qml" -type f -not -path './.git/*')
 
         if [[ $failed -ne 0 ]]; then
